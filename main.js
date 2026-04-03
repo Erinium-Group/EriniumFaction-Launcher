@@ -2167,7 +2167,7 @@ app.whenReady().then(() => {
   // Auto-updater (electron-updater)
   // -------------------------------------------------------------------------
   if (IS_PRODUCTION) {
-    autoUpdater.autoDownload = false;
+    autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.logger = console;
 
@@ -2182,7 +2182,6 @@ app.whenReady().then(() => {
         version: info.version,
         releaseDate: info.releaseDate || null,
       });
-      autoUpdater.downloadUpdate();
     });
 
     autoUpdater.on('update-not-available', function () {
@@ -2191,6 +2190,7 @@ app.whenReady().then(() => {
     });
 
     autoUpdater.on('download-progress', function (progress) {
+      console.log('[AutoUpdater] Progress: ' + Math.round(progress.percent) + '%');
       broadcastUpdaterEvent('update:download-progress', {
         percent: Math.round(progress.percent),
         bytesPerSecond: progress.bytesPerSecond,
@@ -2207,7 +2207,8 @@ app.whenReady().then(() => {
     });
 
     autoUpdater.on('error', function (err) {
-      console.error('[AutoUpdater] Erreur:', err.message);
+      console.error('[AutoUpdater] ERREUR:', err.message);
+      console.error('[AutoUpdater] Stack:', err.stack || 'N/A');
       broadcastUpdaterEvent('update:error', { message: err.message });
     });
   }

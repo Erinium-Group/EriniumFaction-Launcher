@@ -45,64 +45,89 @@
 
   // ---- Auto-updater flow ----
   var updateDone = false;
+  var isDownloading = false;
+
+  function finish() {
+    if (updateDone) return;
+    updateDone = true;
+    navigateOut();
+  }
 
   function startUpdateCheck() {
     setStatus('Verification des mises a jour...');
 
-    // Listen for update events
+    // No update available — continue normally
     window.launcher.update.onNotAvailable(function () {
       if (updateDone) return;
-      updateDone = true;
       setStatus('A jour !');
-      setTimeout(navigateOut, 500);
+      setTimeout(finish, 400);
     });
 
+    // Update found — wait for download
     window.launcher.update.onAvailable(function (data) {
+      if (updateDone) return;
+      isDownloading = true;
       setStatus('Mise a jour ' + (data.version || '') + ' disponible...');
     });
 
+    // Download progress
     window.launcher.update.onDownloadProgress(function (data) {
-      setStatus('Telechargement de la mise a jour... ' + (data.percent || 0) + '%');
+      if (updateDone) return;
+      isDownloading = true;
+      var pct = data.percent || 0;
+      setStatus('Telechargement de la mise a jour... ' + pct + '%');
     });
 
+    // Download complete — install and restart
     window.launcher.update.onDownloaded(function (data) {
       if (updateDone) return;
       updateDone = true;
       setStatus('Installation de la mise a jour ' + (data.version || '') + '...');
-      // Auto-restart to install
       setTimeout(function () {
         window.launcher.update.install();
-      }, 1000);
+      }, 800);
     });
 
-    window.launcher.update.onError(function () {
+    // Error — continue normally
+    window.launcher.update.onError(function (data) {
       if (updateDone) return;
-      updateDone = true;
-      // Update check failed (no internet, dev mode, etc.) — continue normally
-      setTimeout(navigateOut, 300);
+      console.error('[Splash] Update error:', data.message);
+      // If we were downloading, the error is real — show it briefly then continue
+      if (isDownloading) {
+        setStatus('Erreur de mise a jour');
+        setTimeout(finish, 1500);
+      } else {
+        // Check error, probably no internet or dev mode — just continue
+        finish();
+      }
     });
 
     // Trigger the check
     window.launcher.update.check().catch(function () {
-      // In dev mode or no internet — just continue
-      if (!updateDone) {
-        updateDone = true;
-        setTimeout(navigateOut, 300);
-      }
+      // Dev mode or no internet — just continue
+      finish();
     });
 
-    // Safety timeout: if no response after 10s, continue anyway
+    // Safety timeout: 60s for download, 8s if not downloading
+    setTimeout(function () {
+      if (!updateDone && !isDownloading) {
+        console.warn('[Splash] Update check timeout — continuing');
+        finish();
+      }
+    }, 8000);
+
+    // Hard timeout: 60s max no matter what
     setTimeout(function () {
       if (!updateDone) {
-        updateDone = true;
-        navigateOut();
+        console.warn('[Splash] Hard timeout — continuing');
+        finish();
       }
-    }, 10000);
+    }, 60000);
   }
 
   // Start after a short delay for the UI to render
   setTimeout(function () {
     setStatus('Demarrage...');
-    setTimeout(startUpdateCheck, 500);
-  }, 400);
+    setTimeout(startUpdateCheck, 400);
+  }, 300);
 })();
