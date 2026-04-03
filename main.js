@@ -17,7 +17,7 @@ const { Launch } = require('minecraft-java-core');
 // ---------------------------------------------------------------------------
 const SITE_URL = 'https://eriniumfaction.vercel.app';
 const MANIFEST_URL = SITE_URL + '/api/launcher/manifest';
-const APP_VERSION = '1.0.0';
+const APP_VERSION = require('./package.json').version;
 const MC_VERSION = '1.12.2';
 const GAME_DIR = path.join(app.getPath('appData'), '.eriniumfaction');
 const MC_DIR = path.join(GAME_DIR, 'minecraft');
