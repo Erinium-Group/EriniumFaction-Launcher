@@ -8,10 +8,9 @@ permissions:
   contents: write
 
 jobs:
-  # Step 1: Bump version, tag, and trigger builds
+  # Step 1: Bump version and create tag
   version:
     runs-on: ubuntu-latest
-    # Skip if this push was the version bump commit itself
     if: "!contains(github.event.head_commit.message, 'chore: bump version')"
     outputs:
       version: ${{ steps.bump.outputs.version }}
@@ -52,7 +51,7 @@ jobs:
           git tag "${{ steps.bump.outputs.tag }}"
           git push origin main --tags
 
-  # Step 2: Build on all 3 platforms
+  # Step 2: Build and publish directly via electron-builder
   build:
     needs: version
     strategy:
@@ -78,54 +77,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      # electron-builder publishes directly to the GitHub Release (tag already exists)
+      - name: Build and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
-        run: npm run build:${{ matrix.platform }}
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: launcher-${{ matrix.platform }}
-          path: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.AppImage
-            dist/*.deb
-            dist/latest*.yml
-
-  # Step 3: Create GitHub Release
-  release:
-    needs: [version, build]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: List files
-        run: find artifacts -type f
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.version.outputs.tag }}
-          name: EriniumFaction Launcher ${{ needs.version.outputs.version }}
-          body: |
-            ## EriniumFaction Launcher ${{ needs.version.outputs.version }}
-
-            | Plateforme | Fichier |
-            |---|---|
-            | Windows | `.exe` installer |
-            | macOS | `.dmg` disk image |
-            | Linux | `.AppImage` / `.deb` |
-          draft: false
-          prerelease: false
-          files: |
-            artifacts/**/*.exe
-            artifacts/**/*.dmg
-            artifacts/**/*.AppImage
-            artifacts/**/*.deb
-            artifacts/**/*.yml
+          EP_PRE_RELEASE: false
+        run: npx electron-builder --${{ matrix.platform }} --publish always
