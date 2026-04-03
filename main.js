@@ -27,7 +27,7 @@ const FILE_TIMEOUT = 60000;
 
 const store = new Store({
   name: 'erinium-launcher',
-  encryptionKey: 'erinium-fac-2024-secure-key',
+  encryptionKey: crypto.createHash('sha256').update('erinium-' + (machineIdSync(true) || 'default')).digest('hex'),
 });
 
 let mainWindow = null;
