@@ -1,6 +1,6 @@
 {
   "name": "eriniumfaction-launcher",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Launcher officiel EriniumFaction",
   "author": "EriniumGroup",
   "main": "main.js",
@@ -27,7 +27,10 @@
       "category": "public.app-category.games"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "assets/icon.png",
       "category": "Game"
     },
