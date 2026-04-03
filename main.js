@@ -799,17 +799,19 @@ async function compareManifests(remote, local) {
   }
 
   // Check each remote file against what's actually on disk
+  console.log('[EriniumFaction] Comparing ' + remote.files.length + ' remote files against local disk...');
   for (var j = 0; j < remote.files.length; j++) {
     var remoteFile = remote.files[j];
     var fullPath = path.join(GAME_DIR, remoteFile.path);
 
     if (!fs.existsSync(fullPath)) {
-      // File missing — need to download
+      console.log('[EriniumFaction]   MISSING: ' + remoteFile.path);
       toDownload.push(remoteFile);
     } else {
-      // File exists — verify hash matches remote
-      var valid = await verifyFile(fullPath, remoteFile.sha256);
-      if (!valid) {
+      var localHash = await hashFile(fullPath);
+      if (localHash !== remoteFile.sha256) {
+        var localSize = fs.statSync(fullPath).size;
+        console.log('[EriniumFaction]   CHANGED: ' + remoteFile.path + ' (local: ' + localSize + 'b/' + localHash.substring(0, 12) + '... remote: ' + remoteFile.size + 'b/' + remoteFile.sha256.substring(0, 12) + '...)');
         toDownload.push(remoteFile);
       }
     }
@@ -817,6 +819,7 @@ async function compareManifests(remote, local) {
     // Remove from localMap so we can find deletions
     delete localMap[remoteFile.path];
   }
+  console.log('[EriniumFaction] Result: ' + toDownload.length + ' to download, checking deletions...');
 
   // Files in local but not in remote should be deleted (for mods/ only)
   var remainingKeys = Object.keys(localMap);
@@ -1423,6 +1426,17 @@ async function checkAndDownloadGame(webContents) {
 
   var remoteManifest = await fetchRemoteManifest();
   var localManifest = loadLocalManifest();
+
+  if (remoteManifest) {
+    console.log('[EriniumFaction] Remote manifest: v' + remoteManifest.version + ', ' + (remoteManifest.files ? remoteManifest.files.length : 0) + ' files');
+  } else {
+    console.warn('[EriniumFaction] Remote manifest is NULL — offline mode');
+  }
+  if (localManifest) {
+    console.log('[EriniumFaction] Local manifest: v' + localManifest.version + ', ' + (localManifest.files ? localManifest.files.length : 0) + ' files');
+  } else {
+    console.log('[EriniumFaction] No local manifest');
+  }
 
   // --- Step 3: CleanRoom ---
   if (remoteManifest && remoteManifest.cleanroom) {
