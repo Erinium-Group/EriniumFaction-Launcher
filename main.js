@@ -1800,6 +1800,11 @@ function launchGame(javaPath, token, settings, webContents, manifest) {
     }
     args.push('-Dminecraft.applet.TargetDirectory=' + gameDir);
 
+    // Auth token as JVM arg (must be before -cp so it's in JVM args, not game args)
+    if (token) {
+      args.push('-Detk=' + token);
+    }
+
     // Custom JVM args from settings
     if (jvmArgs.length > 0) {
       args = args.concat(jvmArgs);
@@ -1832,11 +1837,6 @@ function launchGame(javaPath, token, settings, webContents, manifest) {
     if (tweakClass) {
       args.push('--tweakClass');
       args.push(tweakClass);
-    }
-
-    // Auth token for our mod (obfuscated name)
-    if (token) {
-      args.push('--etk=' + token);
     }
 
     console.log('[EriniumFaction] Lancement avec Java: ' + javaPath);
