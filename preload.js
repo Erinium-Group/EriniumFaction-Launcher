@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('launcher', {
   app: {
     getVersion: () => ipcRenderer.invoke('app:get-version'),
     isDev: () => ipcRenderer.invoke('app:is-dev'),
+    openLogs: () => ipcRenderer.invoke('app:open-logs'),
     quit: () => ipcRenderer.invoke('app:quit'),
     minimize: () => ipcRenderer.invoke('app:minimize'),
     maximize: () => ipcRenderer.invoke('app:maximize'),

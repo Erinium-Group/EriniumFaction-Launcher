@@ -13,6 +13,47 @@ const { machineIdSync } = require('node-machine-id');
 const { Launch } = require('minecraft-java-core');
 
 // ---------------------------------------------------------------------------
+// File logger — writes all console output to a log file
+// ---------------------------------------------------------------------------
+var LOG_DIR = path.join(app.getPath('userData'), 'logs');
+var LOG_FILE = path.join(LOG_DIR, 'launcher.log');
+
+try { fs.mkdirSync(LOG_DIR, { recursive: true }); } catch (e) {}
+
+// Rotate log if > 2MB
+try {
+  if (fs.existsSync(LOG_FILE) && fs.statSync(LOG_FILE).size > 2 * 1024 * 1024) {
+    var oldLog = LOG_FILE + '.old';
+    try { fs.unlinkSync(oldLog); } catch (e) {}
+    fs.renameSync(LOG_FILE, oldLog);
+  }
+} catch (e) {}
+
+var logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+
+function logToFile(level, args) {
+  var ts = new Date().toISOString();
+  var msg = '[' + ts + '] [' + level + '] ' + Array.prototype.slice.call(args).map(function (a) {
+    if (a instanceof Error) return a.message + '\n' + (a.stack || '');
+    return typeof a === 'object' ? JSON.stringify(a) : String(a);
+  }).join(' ');
+  logStream.write(msg + '\n');
+}
+
+var origLog = console.log;
+var origWarn = console.warn;
+var origError = console.error;
+console.log = function () { origLog.apply(console, arguments); logToFile('INFO', arguments); };
+console.warn = function () { origWarn.apply(console, arguments); logToFile('WARN', arguments); };
+console.error = function () { origError.apply(console, arguments); logToFile('ERROR', arguments); };
+
+console.log('=== EriniumFaction Launcher started ===');
+console.log('Version: ' + require('./package.json').version);
+console.log('Platform: ' + process.platform + ' ' + process.arch);
+console.log('Packaged: ' + app.isPackaged);
+console.log('Log file: ' + LOG_FILE);
+
+// ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 const SITE_URL = 'https://eriniumfaction.vercel.app';
@@ -1892,6 +1933,11 @@ function registerIpcHandlers() {
     return !IS_PRODUCTION;
   });
 
+  ipcMain.handle('app:open-logs', async () => {
+    shell.openPath(LOG_DIR);
+    return { success: true };
+  });
+
   ipcMain.handle('app:quit', async () => {
     // On main screen: hide to tray. On login/splash: actually quit.
     if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
@@ -2183,7 +2229,13 @@ app.whenReady().then(() => {
   if (IS_PRODUCTION) {
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
-    autoUpdater.logger = console;
+    autoUpdater.allowPrerelease = false;
+    autoUpdater.logger = {
+      info: function (msg) { console.log('[AutoUpdater] ' + msg); },
+      warn: function (msg) { console.warn('[AutoUpdater] ' + msg); },
+      error: function (msg) { console.error('[AutoUpdater] ' + msg); },
+      debug: function (msg) { console.log('[AutoUpdater-DBG] ' + msg); },
+    };
 
     autoUpdater.on('checking-for-update', function () {
       console.log('[AutoUpdater] Verification des mises a jour...');
