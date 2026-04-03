@@ -1880,6 +1880,10 @@ function registerIpcHandlers() {
     return APP_VERSION;
   });
 
+  ipcMain.handle('app:is-dev', async () => {
+    return !IS_PRODUCTION;
+  });
+
   ipcMain.handle('app:quit', async () => {
     // On main screen: hide to tray. On login/splash: actually quit.
     if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {

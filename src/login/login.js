@@ -53,6 +53,13 @@
     });
   });
 
+  // Show dev button only in development (not packaged)
+  if (window.launcher && window.launcher.app && window.launcher.app.isDev) {
+    window.launcher.app.isDev().then(function (isDev) {
+      if (isDev && btnDevLogin) btnDevLogin.classList.remove('hidden');
+    });
+  }
+
   // Dev login (simulated)
   btnDevLogin.addEventListener('click', function () {
     showState('loading');
