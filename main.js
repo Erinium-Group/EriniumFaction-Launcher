@@ -2114,16 +2114,24 @@ function registerIpcHandlers() {
 
   // Auto-updater actions
   ipcMain.handle('update:check', async () => {
+    if (!IS_PRODUCTION) {
+      // In dev mode, auto-updater doesn't work — fake "no update"
+      console.log('[AutoUpdater] Mode dev, skip check');
+      broadcastUpdaterEvent('update:not-available');
+      return { success: true, version: null };
+    }
     try {
       var result = await autoUpdater.checkForUpdates();
       return { success: true, version: result ? result.updateInfo.version : null };
     } catch (err) {
+      broadcastUpdaterEvent('update:error', { message: err.message });
       return { success: false, error: err.message };
     }
   });
 
   ipcMain.handle('update:install', async () => {
-    // Quit and install the downloaded update
+    if (!IS_PRODUCTION) return { success: false, error: 'Dev mode' };
+    isQuitting = true;
     autoUpdater.quitAndInstall(false, true);
     return { success: true };
   });
@@ -2164,57 +2172,51 @@ app.whenReady().then(() => {
   // -------------------------------------------------------------------------
   // Auto-updater (electron-updater)
   // -------------------------------------------------------------------------
-  autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
-  autoUpdater.logger = console;
+  if (IS_PRODUCTION) {
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.logger = console;
 
-  autoUpdater.on('checking-for-update', function () {
-    console.log('[AutoUpdater] Verification des mises a jour...');
-    broadcastUpdaterEvent('update:checking');
-  });
-
-  autoUpdater.on('update-available', function (info) {
-    console.log('[AutoUpdater] Mise a jour disponible:', info.version);
-    broadcastUpdaterEvent('update:available', {
-      version: info.version,
-      releaseDate: info.releaseDate || null,
+    autoUpdater.on('checking-for-update', function () {
+      console.log('[AutoUpdater] Verification des mises a jour...');
+      broadcastUpdaterEvent('update:checking');
     });
-    // Start downloading automatically in the background
-    autoUpdater.downloadUpdate();
-  });
 
-  autoUpdater.on('update-not-available', function () {
-    console.log('[AutoUpdater] Aucune mise a jour disponible');
-    broadcastUpdaterEvent('update:not-available');
-  });
-
-  autoUpdater.on('download-progress', function (progress) {
-    broadcastUpdaterEvent('update:download-progress', {
-      percent: Math.round(progress.percent),
-      bytesPerSecond: progress.bytesPerSecond,
-      transferred: progress.transferred,
-      total: progress.total,
+    autoUpdater.on('update-available', function (info) {
+      console.log('[AutoUpdater] Mise a jour disponible:', info.version);
+      broadcastUpdaterEvent('update:available', {
+        version: info.version,
+        releaseDate: info.releaseDate || null,
+      });
+      autoUpdater.downloadUpdate();
     });
-  });
 
-  autoUpdater.on('update-downloaded', function (info) {
-    console.log('[AutoUpdater] Mise a jour telechargee:', info.version);
-    broadcastUpdaterEvent('update:downloaded', {
-      version: info.version,
+    autoUpdater.on('update-not-available', function () {
+      console.log('[AutoUpdater] Aucune mise a jour disponible');
+      broadcastUpdaterEvent('update:not-available');
     });
-  });
 
-  autoUpdater.on('error', function (err) {
-    console.error('[AutoUpdater] Erreur:', err.message);
-    broadcastUpdaterEvent('update:error', { message: err.message });
-  });
-
-  // Check for updates after a short delay (let the UI load first)
-  setTimeout(function () {
-    autoUpdater.checkForUpdates().catch(function (err) {
-      console.error('[AutoUpdater] Erreur verification:', err.message);
+    autoUpdater.on('download-progress', function (progress) {
+      broadcastUpdaterEvent('update:download-progress', {
+        percent: Math.round(progress.percent),
+        bytesPerSecond: progress.bytesPerSecond,
+        transferred: progress.transferred,
+        total: progress.total,
+      });
     });
-  }, 5000);
+
+    autoUpdater.on('update-downloaded', function (info) {
+      console.log('[AutoUpdater] Mise a jour telechargee:', info.version);
+      broadcastUpdaterEvent('update:downloaded', {
+        version: info.version,
+      });
+    });
+
+    autoUpdater.on('error', function (err) {
+      console.error('[AutoUpdater] Erreur:', err.message);
+      broadcastUpdaterEvent('update:error', { message: err.message });
+    });
+  }
 });
 
 /**

@@ -1,5 +1,5 @@
 // ============================================================
-// Splash Screen Logic
+// Splash Screen Logic — with real auto-updater integration
 // ============================================================
 
 (function () {
@@ -13,40 +13,21 @@
     });
   }
 
-  // Loading steps
-  var steps = [
-    { text: 'Demarrage...', delay: 600 },
-    { text: 'Verification des mises a jour...', delay: 800 },
-    { text: 'Verification de la session...', delay: 800 },
-    { text: 'Chargement...', delay: 600 },
-  ];
-
-  var currentStep = 0;
-
-  function nextStep() {
-    if (currentStep < steps.length) {
-      statusText.style.opacity = '0';
-      setTimeout(function () {
-        statusText.textContent = steps[currentStep].text;
-        statusText.style.opacity = '1';
-        currentStep++;
-        if (currentStep < steps.length) {
-          setTimeout(nextStep, steps[currentStep - 1].delay);
-        } else {
-          // All steps done, check session and navigate
-          setTimeout(checkSessionAndNavigate, steps[currentStep - 1].delay);
-        }
-      }, 200);
-    }
+  function setStatus(text) {
+    statusText.style.opacity = '0';
+    setTimeout(function () {
+      statusText.textContent = text;
+      statusText.style.opacity = '1';
+    }, 150);
   }
 
-  function checkSessionAndNavigate() {
+  function navigateOut() {
     if (!window.launcher || !window.launcher.auth) {
-      setTimeout(function () {
-        window.launcher.nav.goLogin();
-      }, 500);
+      window.launcher.nav.goLogin();
       return;
     }
+
+    setStatus('Chargement...');
 
     window.launcher.auth.getSession().then(function (session) {
       if (session && session.valid) {
@@ -62,6 +43,66 @@
     });
   }
 
-  // Start the loading sequence
-  setTimeout(nextStep, 400);
+  // ---- Auto-updater flow ----
+  var updateDone = false;
+
+  function startUpdateCheck() {
+    setStatus('Verification des mises a jour...');
+
+    // Listen for update events
+    window.launcher.update.onNotAvailable(function () {
+      if (updateDone) return;
+      updateDone = true;
+      setStatus('A jour !');
+      setTimeout(navigateOut, 500);
+    });
+
+    window.launcher.update.onAvailable(function (data) {
+      setStatus('Mise a jour ' + (data.version || '') + ' disponible...');
+    });
+
+    window.launcher.update.onDownloadProgress(function (data) {
+      setStatus('Telechargement de la mise a jour... ' + (data.percent || 0) + '%');
+    });
+
+    window.launcher.update.onDownloaded(function (data) {
+      if (updateDone) return;
+      updateDone = true;
+      setStatus('Installation de la mise a jour ' + (data.version || '') + '...');
+      // Auto-restart to install
+      setTimeout(function () {
+        window.launcher.update.install();
+      }, 1000);
+    });
+
+    window.launcher.update.onError(function () {
+      if (updateDone) return;
+      updateDone = true;
+      // Update check failed (no internet, dev mode, etc.) — continue normally
+      setTimeout(navigateOut, 300);
+    });
+
+    // Trigger the check
+    window.launcher.update.check().catch(function () {
+      // In dev mode or no internet — just continue
+      if (!updateDone) {
+        updateDone = true;
+        setTimeout(navigateOut, 300);
+      }
+    });
+
+    // Safety timeout: if no response after 10s, continue anyway
+    setTimeout(function () {
+      if (!updateDone) {
+        updateDone = true;
+        navigateOut();
+      }
+    }, 10000);
+  }
+
+  // Start after a short delay for the UI to render
+  setTimeout(function () {
+    setStatus('Demarrage...');
+    setTimeout(startUpdateCheck, 500);
+  }, 400);
 })();
