@@ -798,24 +798,18 @@ async function compareManifests(remote, local) {
     }
   }
 
-  // Check each remote file
+  // Check each remote file against what's actually on disk
   for (var j = 0; j < remote.files.length; j++) {
     var remoteFile = remote.files[j];
-    var localFile = localMap[remoteFile.path];
     var fullPath = path.join(GAME_DIR, remoteFile.path);
 
-    if (!localFile || localFile.sha256 !== remoteFile.sha256) {
-      // New or changed file — need to download
+    if (!fs.existsSync(fullPath)) {
+      // File missing — need to download
       toDownload.push(remoteFile);
-    } else if (remoteFile.critical) {
-      // Critical file — verify hash even if manifest says it matches
+    } else {
+      // File exists — verify hash matches remote
       var valid = await verifyFile(fullPath, remoteFile.sha256);
       if (!valid) {
-        toDownload.push(remoteFile);
-      }
-    } else {
-      // Non-critical, hash matches in manifest — check file exists
-      if (!fs.existsSync(fullPath)) {
         toDownload.push(remoteFile);
       }
     }
