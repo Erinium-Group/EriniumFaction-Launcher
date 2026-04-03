@@ -8,9 +8,11 @@ permissions:
   contents: write
 
 jobs:
-  # Step 1: Bump version and create tag
+  # Step 1: Bump version, tag, and trigger builds
   version:
     runs-on: ubuntu-latest
+    # Skip if this push was the version bump commit itself
+    if: "!contains(github.event.head_commit.message, 'chore: bump version')"
     outputs:
       version: ${{ steps.bump.outputs.version }}
       tag: ${{ steps.bump.outputs.tag }}
@@ -23,7 +25,6 @@ jobs:
         with:
           node-version: 20
 
-      # Auto-increment patch version from package.json
       - name: Bump patch version
         id: bump
         run: |
@@ -32,7 +33,6 @@ jobs:
           NEW_PATCH=$((PATCH + 1))
           NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
 
-          # Update package.json
           node -e "
             const pkg = require('./package.json');
             pkg.version = '$NEW_VERSION';
@@ -41,9 +41,9 @@ jobs:
 
           echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "Bumped version: $CURRENT -> $NEW_VERSION"
+          echo "Bumped: $CURRENT -> $NEW_VERSION"
 
-      - name: Commit version bump
+      - name: Commit and tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -52,10 +52,11 @@ jobs:
           git tag "${{ steps.bump.outputs.tag }}"
           git push origin main --tags
 
-  # Step 2: Build on all platforms in parallel
+  # Step 2: Build on all 3 platforms
   build:
     needs: version
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -92,10 +93,9 @@ jobs:
             dist/*.dmg
             dist/*.AppImage
             dist/*.deb
-            dist/*.yml
-            dist/*.yaml
+            dist/latest*.yml
 
-  # Step 3: Create GitHub Release with all artifacts
+  # Step 3: Create GitHub Release
   release:
     needs: [version, build]
     runs-on: ubuntu-latest
@@ -105,8 +105,8 @@ jobs:
         with:
           path: artifacts
 
-      - name: List artifacts
-        run: find artifacts -type f | head -30
+      - name: List files
+        run: find artifacts -type f
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -116,15 +116,16 @@ jobs:
           body: |
             ## EriniumFaction Launcher ${{ needs.version.outputs.version }}
 
-            ### Downloads
-            - **Windows**: `.exe` installer
-            - **macOS**: `.dmg` disk image
-            - **Linux**: `.AppImage` or `.deb` package
-
-            *Auto-generated release*
+            | Plateforme | Fichier |
+            |---|---|
+            | Windows | `.exe` installer |
+            | macOS | `.dmg` disk image |
+            | Linux | `.AppImage` / `.deb` |
           draft: false
           prerelease: false
           files: |
-            artifacts/launcher-win/*
-            artifacts/launcher-mac/*
-            artifacts/launcher-linux/*
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+            artifacts/**/*.yml
