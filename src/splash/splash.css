@@ -1,0 +1,125 @@
+/* ============================================================
+   Splash Screen
+   ============================================================ */
+
+body {
+  background: transparent;
+}
+
+.splash-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, rgba(107, 47, 160, 0.12) 0%, transparent 60%),
+              radial-gradient(ellipse at 50% 70%, rgba(0, 229, 255, 0.06) 0%, transparent 50%),
+              var(--bg);
+  border-radius: 16px;
+  animation: fadeIn 0.6s ease forwards;
+}
+
+/* ---- Ambient glow blobs ---- */
+.ambient-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  animation: glowFloat 6s ease-in-out infinite alternate;
+}
+
+.glow-violet {
+  width: 250px;
+  height: 250px;
+  background: rgba(107, 47, 160, 0.15);
+  top: 15%;
+  left: 20%;
+}
+
+.glow-cyan {
+  width: 200px;
+  height: 200px;
+  background: rgba(0, 229, 255, 0.08);
+  bottom: 20%;
+  right: 15%;
+  animation-delay: -3s;
+}
+
+@keyframes glowFloat {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(15px, -10px) scale(1.1); }
+}
+
+/* ---- Logo ---- */
+.logo-area {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.logo-glow {
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle, rgba(107, 47, 160, 0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: logoGlowPulse 3s ease-in-out infinite;
+}
+
+@keyframes logoGlowPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+.logo-icon {
+  width: 120px;
+  height: 120px;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 20px rgba(107, 47, 160, 0.3));
+}
+
+/* ---- Title ---- */
+.splash-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-bottom: 40px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Spinner area ---- */
+.spinner-area {
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Status text ---- */
+.status-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  position: relative;
+  z-index: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* ---- Version ---- */
+.version-text {
+  position: absolute;
+  bottom: 20px;
+  right: 24px;
+  font-size: 11px;
+  color: rgba(136, 146, 164, 0.5);
+  letter-spacing: 0.04em;
+  z-index: 1;
+}

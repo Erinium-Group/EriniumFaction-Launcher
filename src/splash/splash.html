@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EriniumFaction — Chargement</title>
+  <link rel="stylesheet" href="../shared/styles.css">
+  <link rel="stylesheet" href="splash.css">
+</head>
+<body>
+  <div class="splash-container" id="splash">
+    <!-- Ambient glow effects -->
+    <div class="ambient-glow glow-violet"></div>
+    <div class="ambient-glow glow-cyan"></div>
+
+    <!-- Logo area -->
+    <div class="logo-area">
+      <div class="logo-glow"></div>
+      <svg class="logo-icon" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#6B2FA0" />
+            <stop offset="50%" style="stop-color:#C8A0FF" />
+            <stop offset="100%" style="stop-color:#00E5FF" />
+          </linearGradient>
+        </defs>
+        <!-- Hexagonal crystal shape -->
+        <polygon points="60,8 108,32 108,88 60,112 12,88 12,32"
+                 fill="none" stroke="url(#logoGrad)" stroke-width="3"
+                 stroke-linejoin="round" />
+        <polygon points="60,22 94,40 94,80 60,98 26,80 26,40"
+                 fill="none" stroke="url(#logoGrad)" stroke-width="1.5"
+                 stroke-linejoin="round" opacity="0.5" />
+        <!-- E letter in center -->
+        <text x="60" y="70" text-anchor="middle" fill="url(#logoGrad)"
+              font-family="Inter, sans-serif" font-weight="800" font-size="40">E</text>
+      </svg>
+    </div>
+
+    <!-- Title -->
+    <h1 class="splash-title">
+      <span class="gradient-text">EriniumFaction</span>
+    </h1>
+
+    <!-- Spinner -->
+    <div class="spinner-area">
+      <div class="spinner-ring"></div>
+    </div>
+
+    <!-- Status text -->
+    <p class="status-text" id="statusText">Demarrage...</p>
+
+    <!-- Version -->
+    <p class="version-text" id="versionText">v1.0.0</p>
+  </div>
+
+  <script src="splash.js"></script>
+</body>
+</html>
