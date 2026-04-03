@@ -24,13 +24,23 @@ jobs:
         with:
           node-version: 20
 
-      - name: Bump patch version
+      - name: Bump version
         id: bump
         run: |
           CURRENT=$(node -p "require('./package.json').version")
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-          NEW_PATCH=$((PATCH + 1))
-          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          MSG="${{ github.event.head_commit.message }}"
+
+          # [major] in commit message -> 2.0.0
+          # [minor] in commit message -> 1.1.0
+          # default -> 1.0.16
+          if echo "$MSG" | grep -qi '\[major\]'; then
+            NEW_VERSION="$((MAJOR + 1)).0.0"
+          elif echo "$MSG" | grep -qi '\[minor\]'; then
+            NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
+          else
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          fi
 
           node -e "
             const pkg = require('./package.json');
