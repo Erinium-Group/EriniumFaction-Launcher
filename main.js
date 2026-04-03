@@ -15,29 +15,40 @@ const { Launch } = require('minecraft-java-core');
 // ---------------------------------------------------------------------------
 // File logger — writes all console output to a log file
 // ---------------------------------------------------------------------------
-var LOG_DIR = path.join(app.getPath('userData'), 'logs');
+// Use APPDATA directly instead of app.getPath() which may not be ready yet
+var LOG_DIR = path.join(
+  process.env.APPDATA || process.env.HOME || os.homedir(),
+  'eriniumfaction-launcher', 'logs'
+);
 var LOG_FILE = path.join(LOG_DIR, 'launcher.log');
+var logStream = null;
 
-try { fs.mkdirSync(LOG_DIR, { recursive: true }); } catch (e) {}
-
-// Rotate log if > 2MB
 try {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+
+  // Rotate log if > 2MB
   if (fs.existsSync(LOG_FILE) && fs.statSync(LOG_FILE).size > 2 * 1024 * 1024) {
     var oldLog = LOG_FILE + '.old';
     try { fs.unlinkSync(oldLog); } catch (e) {}
     fs.renameSync(LOG_FILE, oldLog);
   }
-} catch (e) {}
 
-var logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+  logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+} catch (e) {
+  // Last resort fallback
+}
 
 function logToFile(level, args) {
-  var ts = new Date().toISOString();
-  var msg = '[' + ts + '] [' + level + '] ' + Array.prototype.slice.call(args).map(function (a) {
-    if (a instanceof Error) return a.message + '\n' + (a.stack || '');
-    return typeof a === 'object' ? JSON.stringify(a) : String(a);
-  }).join(' ');
-  logStream.write(msg + '\n');
+  if (!logStream) return;
+  try {
+    var ts = new Date().toISOString();
+    var msg = '[' + ts + '] [' + level + '] ' + Array.prototype.slice.call(args).map(function (a) {
+      if (a instanceof Error) return a.message + '\n' + (a.stack || '');
+      if (typeof a === 'object') try { return JSON.stringify(a); } catch (e) { return String(a); }
+      return String(a);
+    }).join(' ');
+    logStream.write(msg + '\n');
+  } catch (e) {}
 }
 
 var origLog = console.log;
