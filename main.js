@@ -25,10 +25,21 @@ const MAX_CONCURRENT_DOWNLOADS = 4;
 const MAX_RETRIES = 3;
 const FILE_TIMEOUT = 60000;
 
-const store = new Store({
-  name: 'erinium-launcher',
-  encryptionKey: crypto.createHash('sha256').update('erinium-' + (machineIdSync(true) || 'default')).digest('hex'),
-});
+let store;
+try {
+  store = new Store({
+    name: 'erinium-launcher',
+    encryptionKey: crypto.createHash('sha256').update('erinium-' + (machineIdSync(true) || 'default')).digest('hex'),
+  });
+} catch (e) {
+  // Store corrupted (e.g. encryption key changed) — delete and recreate
+  const storePath = path.join(app.getPath('userData'), 'erinium-launcher.json');
+  try { fs.unlinkSync(storePath); } catch (_) {}
+  store = new Store({
+    name: 'erinium-launcher',
+    encryptionKey: crypto.createHash('sha256').update('erinium-' + (machineIdSync(true) || 'default')).digest('hex'),
+  });
+}
 
 let mainWindow = null;
 let splashWindow = null;
