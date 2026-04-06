@@ -192,14 +192,19 @@
       articles.forEach(function (article) {
         var item = document.createElement('div');
         item.className = 'news-item';
+        var summary = article.summary || article.excerpt || '';
+        var tagHtml = article.tag ? '<span class="news-tag">' + escapeHtml(article.tag) + '</span>' : '';
         item.innerHTML =
           '<div class="news-dot"></div>' +
           '<div class="news-content">' +
+          '<div class="news-header">' + tagHtml + '<span class="news-date">' + (article.date || '') + '</span></div>' +
           '<div class="news-title">' + escapeHtml(article.title || 'Sans titre') + '</div>' +
-          '<div class="news-date">' + formatRelativeDate(article.date) + '</div>' +
+          (summary ? '<div class="news-summary">' + escapeHtml(summary) + '</div>' : '') +
           '</div>';
         item.addEventListener('click', function () {
-          var newsUrl = article.url || 'https://eriniumfaction.vercel.app';
+          var newsUrl = article.slug
+            ? 'https://eriniumfaction.vercel.app/news/' + article.slug
+            : 'https://eriniumfaction.vercel.app/news';
           window.launcher.shell.openExternal(newsUrl);
         });
         newsList.appendChild(item);
@@ -208,6 +213,9 @@
       newsList.innerHTML = '<p class="news-empty">Impossible de charger les actualites.</p>';
     });
   }
+
+  // Auto-refresh news every 5 minutes
+  setInterval(loadNews, 5 * 60 * 1000);
 
   // ---- Game progress elements ----
   var gameProgress = document.getElementById('gameProgress');

@@ -1987,12 +1987,7 @@ function registerIpcHandlers() {
     const data = await fetchJSON(SITE_URL + '/api/news');
     if (data && Array.isArray(data)) return data.slice(0, 5);
     if (data && data.articles) return data.articles.slice(0, 5);
-    // Return placeholder news for dev
-    return [
-      { title: 'Bienvenue sur EriniumFaction !', date: new Date().toISOString(), url: SITE_URL },
-      { title: 'Le serveur est en cours de developpement', date: new Date(Date.now() - 86400000).toISOString(), url: SITE_URL },
-      { title: 'Rejoignez notre Discord !', date: new Date(Date.now() - 172800000).toISOString(), url: SITE_URL },
-    ];
+    return [];
   });
 
   // Game launch — full download, verify, launch flow
