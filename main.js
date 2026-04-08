@@ -1382,6 +1382,23 @@ async function installCleanRoom(manifest, webContents, javaPath) {
   // Use java.exe not javaw.exe for console output
   javaExe = javaExe.replace('javaw.exe', 'java.exe').replace('javaw', 'java');
 
+  // Delete old CleanRoom version folders before installing new one
+  var versionsDir = path.join(GAME_DIR, 'versions');
+  if (fs.existsSync(versionsDir)) {
+    try {
+      var versionEntries = fs.readdirSync(versionsDir);
+      for (var vi = 0; vi < versionEntries.length; vi++) {
+        if (versionEntries[vi].startsWith('cleanroom-') && versionEntries[vi] !== 'cleanroom-' + manifest.cleanroom) {
+          var oldDir = path.join(versionsDir, versionEntries[vi]);
+          console.log('[EriniumFaction] Deleting old CleanRoom version: ' + versionEntries[vi]);
+          fs.rmSync(oldDir, { recursive: true, force: true });
+        }
+      }
+    } catch (e) {
+      console.warn('[EriniumFaction] Failed to clean old CleanRoom versions:', e.message);
+    }
+  }
+
   // The installer expects a launcher_profiles.json (like the Mojang launcher creates)
   var profilesPath = path.join(GAME_DIR, 'launcher_profiles.json');
   if (!fs.existsSync(profilesPath)) {
