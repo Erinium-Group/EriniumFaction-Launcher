@@ -530,10 +530,10 @@ async function autoDetectJava() {
     }
   }
 
-  // Prefer Java 21+ (CleanRoom), then highest version
+  // Prefer Java 25+ (CleanRoom), then highest version
   results.sort(function (a, b) {
-    var aPreferred = a.major >= 21 ? 1 : 0;
-    var bPreferred = b.major >= 21 ? 1 : 0;
+    var aPreferred = a.major >= 25 ? 1 : 0;
+    var bPreferred = b.major >= 25 ? 1 : 0;
     if (aPreferred !== bPreferred) return bPreferred - aPreferred;
     return b.major - a.major;
   });
@@ -655,7 +655,7 @@ async function downloadAndInstallJava(senderWebContents) {
   archiveExt = process.platform === 'win32' ? '.zip' : '.tar.gz';
 
   var archivePath = path.join(javaBaseDir, 'jdk-download' + archiveExt);
-  var downloadUrl = 'https://api.adoptium.net/v3/binary/latest/21/ga/' + adoptiumOs + '/' + adoptiumArch + '/jdk/hotspot/normal/eclipse?project=jdk';
+  var downloadUrl = 'https://api.adoptium.net/v3/binary/latest/25/ga/' + adoptiumOs + '/' + adoptiumArch + '/jdk/hotspot/normal/eclipse?project=jdk';
 
   // Download
   function sendProgress(data) {
@@ -664,7 +664,7 @@ async function downloadAndInstallJava(senderWebContents) {
     }
   }
 
-  sendProgress({ status: 'downloading', percent: 0, message: 'Telechargement de Java 21...' });
+  sendProgress({ status: 'downloading', percent: 0, message: 'Telechargement de Java 25...' });
 
   try {
     await downloadFile(downloadUrl, archivePath, function (p) {
@@ -735,9 +735,9 @@ async function downloadAndInstallJava(senderWebContents) {
 
   var version = await getJavaVersion(javaBinPath);
 
-  sendProgress({ status: 'done', percent: 100, message: 'Java 21 installe avec succes !', path: javaBinPath, version: version || '21' });
+  sendProgress({ status: 'done', percent: 100, message: 'Java 25 installe avec succes !', path: javaBinPath, version: version || '25' });
 
-  return { path: javaBinPath, version: version || '21' };
+  return { path: javaBinPath, version: version || '25' };
 }
 
 // ---------------------------------------------------------------------------
@@ -1602,15 +1602,44 @@ async function checkAndDownloadGame(webContents) {
   sendProgress(webContents, 'Pret !', 100, '');
   sendStatus(webContents, 'launching', 'Lancement du jeu...');
 
-  // Determine java path
+  // Determine java path — CleanRoom requires Java 25+
   var finalJavaPath = settings.javaPath || null;
+  var detectedJavaMajor = 0;
+
+  if (finalJavaPath) {
+    // User-configured path: verify it's Java 25+
+    var userVersion = await getJavaVersion(finalJavaPath);
+    detectedJavaMajor = getMajorVersion(userVersion);
+    if (detectedJavaMajor < 25) {
+      console.log('[EriniumFaction] Configured Java is v' + detectedJavaMajor + ', need 25+. Ignoring.');
+      finalJavaPath = null;
+    }
+  }
+
   if (!finalJavaPath) {
-    // Try auto-detect
+    // Try auto-detect — prefers Java 25+
     var detected = await autoDetectJava();
     if (detected.found) {
-      finalJavaPath = detected.path;
-    } else if (mcData && mcData.minecraftJava && mcData.minecraftJava.path) {
-      finalJavaPath = mcData.minecraftJava.path;
+      detectedJavaMajor = getMajorVersion(detected.version);
+      if (detectedJavaMajor >= 25) {
+        finalJavaPath = detected.path;
+      }
+    }
+  }
+
+  // No Java 25+ found — auto-download
+  if (!finalJavaPath) {
+    console.log('[EriniumFaction] No Java 25+ found. Downloading automatically...');
+    sendProgress(webContents, 'Installation de Java 25...', 95, 'CleanRoom necessite Java 25');
+    sendStatus(webContents, 'downloading', 'Installation de Java 25...');
+    try {
+      var javaResult = await downloadAndInstallJava(webContents);
+      finalJavaPath = javaResult.path;
+      console.log('[EriniumFaction] Java 25 installed at: ' + finalJavaPath);
+    } catch (err) {
+      console.error('[EriniumFaction] Failed to install Java 25: ' + err.message);
+      sendStatus(webContents, 'error', 'Impossible d\'installer Java 25 : ' + err.message);
+      throw new Error('Java 25 est requis pour CleanRoom. Installation automatique echouee: ' + err.message);
     }
   }
 
