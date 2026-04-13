@@ -1105,6 +1105,63 @@ function formatBytes(bytes) {
 }
 
 /**
+ * Sync optional mods: download enabled ones, delete disabled ones.
+ */
+async function syncOptionalMods(manifest, settings) {
+  if (!manifest || !manifest.allowedMods || manifest.allowedMods.length === 0) return;
+
+  var enabledMods = (settings && settings.optionalMods) ? settings.optionalMods : {};
+  var modsDir = path.join(GAME_DIR, 'mods');
+  ensureDir(modsDir);
+
+  for (var i = 0; i < manifest.allowedMods.length; i++) {
+    var mod = manifest.allowedMods[i];
+    var fileName = path.basename(mod.path);
+    var localPath = path.join(modsDir, fileName);
+    var isEnabled = enabledMods[fileName] === true;
+
+    if (isEnabled) {
+      // Download if not present or hash mismatch
+      if (!fs.existsSync(localPath)) {
+        console.log('[EriniumFaction] Downloading optional mod: ' + fileName);
+        if (mod.url) {
+          try {
+            await downloadFile(mod.url, localPath);
+            console.log('[EriniumFaction] Optional mod downloaded: ' + fileName);
+          } catch (err) {
+            console.warn('[EriniumFaction] Failed to download optional mod: ' + fileName, err.message);
+          }
+        }
+      } else {
+        // Verify hash
+        var localHash = await hashFile(localPath);
+        if (localHash !== mod.sha256) {
+          console.log('[EriniumFaction] Optional mod hash mismatch, re-downloading: ' + fileName);
+          try { fs.unlinkSync(localPath); } catch (e) {}
+          if (mod.url) {
+            try {
+              await downloadFile(mod.url, localPath);
+            } catch (err) {
+              console.warn('[EriniumFaction] Failed to re-download optional mod: ' + fileName, err.message);
+            }
+          }
+        }
+      }
+    } else {
+      // Disabled — remove if present
+      if (fs.existsSync(localPath)) {
+        try {
+          fs.unlinkSync(localPath);
+          console.log('[EriniumFaction] Optional mod removed: ' + fileName);
+        } catch (e) {
+          console.warn('[EriniumFaction] Could not remove optional mod: ' + fileName, e.message);
+        }
+      }
+    }
+  }
+}
+
+/**
  * Check the mods/ whitelist: move unauthorized jars to mods_disabled/.
  */
 function enforceModsWhitelist(manifest) {
@@ -1117,6 +1174,12 @@ function enforceModsWhitelist(manifest) {
       if (manifest.files[i].category === 'mod') {
         allowedFiles[path.basename(manifest.files[i].path)] = true;
       }
+    }
+  }
+  // Also allow optional mods from the allowedMods list
+  if (manifest && manifest.allowedMods) {
+    for (var k = 0; k < manifest.allowedMods.length; k++) {
+      allowedFiles[path.basename(manifest.allowedMods[k].path)] = true;
     }
   }
 
@@ -1598,6 +1661,10 @@ async function checkAndDownloadGame(webContents) {
     sendProgress(webContents, 'Mods non autorises deplaces', 95, movedMods.length + ' mod(s) deplace(s) dans mods_disabled/');
   }
 
+  // --- Step 7: Optional mods sync ---
+  sendProgress(webContents, 'Mods optionnels...', 97, '');
+  await syncOptionalMods(effectiveManifest, settings);
+
   // --- Done ---
   sendProgress(webContents, 'Pret !', 100, '');
   sendStatus(webContents, 'launching', 'Lancement du jeu...');
@@ -2067,6 +2134,16 @@ function registerIpcHandlers() {
       console.error('[EriniumFaction] Erreur game:launch:', err.message);
       sendStatus(sender, 'error', err.message);
       return { success: false, error: err.message };
+    }
+  });
+
+  // Fetch manifest (for optional mods panel)
+  ipcMain.handle('game:fetch-manifest', async () => {
+    try {
+      return await fetchRemoteManifest();
+    } catch (err) {
+      console.error('[EriniumFaction] Fetch manifest error:', err.message);
+      return null;
     }
   });
 

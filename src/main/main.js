@@ -62,6 +62,14 @@
   var javaDlPercent = document.getElementById('javaDlPercent');
   var javaDlBarFill = document.getElementById('javaDlBarFill');
 
+  // Optional Mods
+  var modsOverlay = document.getElementById('modsOverlay');
+  var modsBackdrop = document.getElementById('modsBackdrop');
+  var btnOptionalMods = document.getElementById('btnOptionalMods');
+  var btnCloseMods = document.getElementById('btnCloseMods');
+  var btnSaveMods = document.getElementById('btnSaveMods');
+  var modsListContainer = document.getElementById('modsListContainer');
+
   // Footer
   var footerVersion = document.getElementById('footerVersion');
 
@@ -636,6 +644,91 @@
     };
     window.launcher.settings.save(settings).then(function () {
       closeSettings();
+    });
+  });
+
+  // ---- Optional Mods ----
+  var optionalModsState = {}; // { filename: true/false }
+
+  function openModsPanel() {
+    modsOverlay.classList.remove('hidden');
+    modsOverlay.classList.remove('closing');
+    loadOptionalMods();
+  }
+
+  function closeModsPanel() {
+    modsOverlay.classList.add('closing');
+    setTimeout(function () {
+      modsOverlay.classList.add('hidden');
+      modsOverlay.classList.remove('closing');
+    }, 260);
+  }
+
+  function loadOptionalMods() {
+    modsListContainer.innerHTML = '<div class="news-loading"><div class="spinner"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>Chargement...</span></div>';
+
+    // Load saved state
+    window.launcher.settings.get().then(function (settings) {
+      var savedMods = (settings && settings.optionalMods) ? settings.optionalMods : {};
+
+      // Fetch manifest to get allowed mods
+      window.launcher.game.fetchManifest().then(function (manifest) {
+        if (!manifest || !manifest.allowedMods || manifest.allowedMods.length === 0) {
+          modsListContainer.innerHTML = '<p class="setting-hint">Aucun mod optionnel disponible pour le moment.</p>';
+          return;
+        }
+
+        optionalModsState = {};
+        var html = '';
+        for (var i = 0; i < manifest.allowedMods.length; i++) {
+          var mod = manifest.allowedMods[i];
+          var fileName = mod.path.split('/').pop();
+          var displayName = fileName.replace('.jar', '').replace(/-/g, ' ').replace(/_/g, ' ');
+          var sizeKB = Math.round(mod.size / 1024);
+          var enabled = savedMods[fileName] === true;
+          optionalModsState[fileName] = enabled;
+
+          html += '<div class="setting-group">'
+            + '<div class="setting-toggle-row">'
+            + '<div style="display:flex; flex-direction:column;">'
+            + '<span class="setting-label">' + displayName + '</span>'
+            + '<span class="setting-hint" style="margin:0; font-size:11px">' + fileName + ' (' + sizeKB + ' Ko)</span>'
+            + '</div>'
+            + '<label class="toggle">'
+            + '<input type="checkbox" class="mod-toggle" data-filename="' + fileName + '"' + (enabled ? ' checked' : '') + '>'
+            + '<span class="toggle-slider"></span>'
+            + '</label>'
+            + '</div>'
+            + '</div>';
+        }
+
+        modsListContainer.innerHTML = html;
+
+        // Wire toggle events
+        var toggles = modsListContainer.querySelectorAll('.mod-toggle');
+        for (var j = 0; j < toggles.length; j++) {
+          toggles[j].addEventListener('change', function () {
+            optionalModsState[this.getAttribute('data-filename')] = this.checked;
+          });
+        }
+      }).catch(function () {
+        modsListContainer.innerHTML = '<p class="setting-hint" style="color: #E74C3C;">Erreur lors du chargement. Verifiez votre connexion.</p>';
+      });
+    });
+  }
+
+  btnOptionalMods.addEventListener('click', openModsPanel);
+  btnCloseMods.addEventListener('click', closeModsPanel);
+  modsBackdrop.addEventListener('click', closeModsPanel);
+
+  btnSaveMods.addEventListener('click', function () {
+    // Save optional mods state to settings
+    window.launcher.settings.get().then(function (settings) {
+      if (!settings) settings = {};
+      settings.optionalMods = optionalModsState;
+      window.launcher.settings.save(settings).then(function () {
+        closeModsPanel();
+      });
     });
   });
 

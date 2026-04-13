@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('launcher', {
   game: {
     launch: () => ipcRenderer.invoke('game:launch'),
     repair: () => ipcRenderer.invoke('game:repair'),
+    fetchManifest: () => ipcRenderer.invoke('game:fetch-manifest'),
     onProgress: (cb) => ipcRenderer.on('game:progress', function (_e, data) { cb(data); }),
     onStatus: (cb) => ipcRenderer.on('game:status', function (_e, data) { cb(data); }),
     removeProgressListeners: () => ipcRenderer.removeAllListeners('game:progress'),
