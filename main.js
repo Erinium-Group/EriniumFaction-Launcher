@@ -1164,8 +1164,8 @@ async function syncOptionalMods(manifest, settings) {
 /**
  * Check the mods/ whitelist: move unauthorized jars to mods_disabled/.
  */
-function enforceModsWhitelist(manifest) {
-  var modsDir = path.join(GAME_DIR, 'mods');
+function enforceModsWhitelist(manifest, gameDir) {
+  var modsDir = path.join(gameDir || GAME_DIR, 'mods');
   if (!fs.existsSync(modsDir)) return [];
 
   var allowedFiles = {};
@@ -1193,17 +1193,14 @@ function enforceModsWhitelist(manifest) {
       if (!entry.endsWith('.jar')) continue;
       if (allowedFiles[entry]) continue;
 
-      // Unauthorized mod — move to mods_disabled/
-      ensureDir(disabledDir);
+      // Unauthorized mod — DELETE it
       var src = path.join(modsDir, entry);
-      var dest = path.join(disabledDir, entry);
       try {
-        if (fs.existsSync(dest)) fs.unlinkSync(dest);
-        fs.renameSync(src, dest);
+        fs.unlinkSync(src);
         movedFiles.push(entry);
-        console.log('[EriniumFaction] Mod non autorise deplace: ' + entry);
+        console.log('[EriniumFaction] Mod non autorise SUPPRIME: ' + entry);
       } catch (e) {
-        console.warn('[EriniumFaction] Impossible de deplacer ' + entry + ':', e.message);
+        console.warn('[EriniumFaction] Impossible de supprimer ' + entry + ':', e.message);
       }
     }
   } catch (e) {
@@ -1656,7 +1653,7 @@ async function checkAndDownloadGame(webContents) {
 
   // --- Step 6: Whitelist check for mods/ ---
   sendProgress(webContents, 'Verification des mods...', 95, '');
-  var movedMods = enforceModsWhitelist(effectiveManifest);
+  var movedMods = enforceModsWhitelist(effectiveManifest, gameDir);
   if (movedMods.length > 0) {
     sendProgress(webContents, 'Mods non autorises deplaces', 95, movedMods.length + ' mod(s) deplace(s) dans mods_disabled/');
   }
