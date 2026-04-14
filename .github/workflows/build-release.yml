@@ -26,17 +26,18 @@ jobs:
 
       - name: Bump version
         id: bump
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           CURRENT=$(node -p "require('./package.json').version")
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-          MSG="${{ github.event.head_commit.message }}"
 
           # [major] in commit message -> 2.0.0
           # [minor] in commit message -> 1.1.0
           # default -> 1.0.16
-          if echo "$MSG" | grep -qi '\[major\]'; then
+          if echo "$COMMIT_MSG" | grep -qi '\[major\]'; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
-          elif echo "$MSG" | grep -qi '\[minor\]'; then
+          elif echo "$COMMIT_MSG" | grep -qi '\[minor\]'; then
             NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
           else
             NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
